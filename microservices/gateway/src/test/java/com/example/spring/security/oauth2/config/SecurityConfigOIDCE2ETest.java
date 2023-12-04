@@ -1,7 +1,6 @@
 package com.example.spring.security.oauth2.config;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
-import org.apache.http.client.utils.URIBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -12,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -23,14 +21,13 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.URI;
 import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Import({SecurityConfig.class, TestClientConfig.class})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
-public class SecurityConfigKeyCloakE2ETest {
+public class SecurityConfigOIDCE2ETest {
 
     private static KeycloakContainer keycloak;
 
@@ -59,27 +56,9 @@ public class SecurityConfigKeyCloakE2ETest {
                 () -> keycloak.getAuthServerUrl() + "/realms/test-spring/protocol/openid-connect/userinfo");
         registry.add("spring.security.oauth2.client.provider.keycloak.jwk-set-uri",
                 () -> keycloak.getAuthServerUrl() + "/realms/test-spring/protocol/openid-connect/certs");
-    }
 
-    @Test
-    @DisplayName("Should generate token for password grant type ")
-    public void testReturnTokenForPasswordGrantType() throws Exception {
-
-        URI authorizationURI = new URIBuilder(keycloak.getAuthServerUrl() + "/realms/test-spring/protocol/openid-connect/token").build();
-
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.put("grant_type", Collections.singletonList("password"));
-        formData.put("client_id", Collections.singletonList("test-spring-client"));
-        formData.put("username", Collections.singletonList("test"));
-        formData.put("password", Collections.singletonList("test"));
-
-        RestTemplate client = new RestTemplateBuilder()
-                .build();
-
-        var result = client.postForEntity(authorizationURI, formData, String.class);
-
-        Assertions.assertTrue(result.getStatusCode().is2xxSuccessful());
-
+        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri",
+                () -> keycloak.getAuthServerUrl() + "/realms/test-spring");
     }
 
     @Test

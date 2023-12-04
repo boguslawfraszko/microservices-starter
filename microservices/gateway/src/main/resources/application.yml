@@ -36,6 +36,9 @@ spring:
             user-info-uri: http://localhost:8081/realms/test-spring/protocol/openid-connect/userinfo
             user-name-attribute: test
             jwk-set-uri: http://localhost:8081/realms/test-spring/protocol/openid-connect/certs
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/test-spring
 
 logging:
   level:
