@@ -1,0 +1,18 @@
+server:
+  ssl:
+    enabled: true
+    key-store-type: PKCS12
+    key-store: classpath:spring.p12
+    key-alias: spring
+    key-store-password: password
+  servlet:
+    context-path: /
+  port: 8444
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/test-spring
+          jwk-set-uri: http://localhost:8081/realms/test-spring/protocol/openid-connect/certs

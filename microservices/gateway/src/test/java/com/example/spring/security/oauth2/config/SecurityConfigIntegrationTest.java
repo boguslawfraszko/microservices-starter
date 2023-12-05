@@ -1,5 +1,6 @@
 package com.example.spring.security.oauth2.config;
 
+import net.jcip.annotations.NotThreadSafe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,8 @@ import org.springframework.web.context.WebApplicationContext;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
+
+@NotThreadSafe
 @ExtendWith(SpringExtension.class)
 @WebMvcTest
 @Import(SecurityConfig.class)

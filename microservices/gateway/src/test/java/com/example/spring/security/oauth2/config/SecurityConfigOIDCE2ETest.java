@@ -1,6 +1,7 @@
 package com.example.spring.security.oauth2.config;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import net.jcip.annotations.NotThreadSafe;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -25,6 +26,7 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@NotThreadSafe
 @Import({SecurityConfig.class, TestClientConfig.class})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 public class SecurityConfigOIDCE2ETest {
@@ -56,9 +58,6 @@ public class SecurityConfigOIDCE2ETest {
                 () -> keycloak.getAuthServerUrl() + "/realms/test-spring/protocol/openid-connect/userinfo");
         registry.add("spring.security.oauth2.client.provider.keycloak.jwk-set-uri",
                 () -> keycloak.getAuthServerUrl() + "/realms/test-spring/protocol/openid-connect/certs");
-
-        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri",
-                () -> keycloak.getAuthServerUrl() + "/realms/test-spring");
     }
 
     @Test

@@ -6,6 +6,7 @@ import io.restassured.RestAssured;
 import io.restassured.module.mockmvc.RestAssuredMockMvc;
 import io.restassured.parsing.Parser;
 import lombok.SneakyThrows;
+import net.jcip.annotations.NotThreadSafe;
 import org.apache.http.client.utils.URIBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.json.JacksonJsonParser;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -31,6 +33,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 
 
+@NotThreadSafe
 @Import({SecurityConfig.class, TestClientConfig.class})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 public class SecurityConfigJWTE2ETest {
@@ -46,6 +49,9 @@ public class SecurityConfigJWTE2ETest {
 
         keycloak.start();
     }
+    @LocalServerPort
+    private int port;
+
     @Autowired
     private PersonController controller;
 
@@ -65,6 +71,9 @@ public class SecurityConfigJWTE2ETest {
 
         registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri",
                 () -> keycloak.getAuthServerUrl() + "/realms/test-spring");
+
+        registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
+                () -> keycloak.getAuthServerUrl() + "/realms/test-spring/protocol/openid-connect/certs");
     }
 
 
@@ -97,7 +106,7 @@ public class SecurityConfigJWTE2ETest {
 
         given().header("Authorization", bearerToken)
                 .when()
-                .get("https://localhost:8443/persons")
+                .get("https://localhost:"+port+"/persons")
                 .then()
                 .body(containsString("Andy"))
                 .statusCode(200);
