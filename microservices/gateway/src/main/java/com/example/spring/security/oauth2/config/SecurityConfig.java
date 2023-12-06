@@ -8,46 +8,35 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
-import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient;
-import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
-import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
-import org.springframework.security.oauth2.client.web.AuthenticatedPrincipalOAuth2AuthorizedClientRepository;
-import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
-import org.springframework.security.oauth2.client.web.HttpSessionOAuth2AuthorizationRequestRepository;
-import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.server.DefaultServerOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
-import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
-import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.header.XFrameOptionsServerHttpHeadersWriter;
+import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
-import java.util.*;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static org.springframework.security.config.Customizer.withDefaults;
 
 
 @Configuration
-@EnableWebSecurity
+@EnableWebFluxSecurity
+@EnableReactiveMethodSecurity
 @Slf4j
 @EnableConfigurationProperties(OAuth2ClientProperties.class)
 public class SecurityConfig {
@@ -58,92 +47,67 @@ public class SecurityConfig {
     private Environment env;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http
-    ) throws Exception {
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
-                .logout(logout -> logout.logoutUrl("/logout")
-                        .clearAuthentication(true)
-                        .invalidateHttpSession(true)
-                        .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "GET"))
-                        .addLogoutHandler((request, response, authentication) -> {
-                            log.debug("about to logout for " + authentication);
-                        })
-                )
-                .authorizeHttpRequests( authorize -> authorize
-                        .requestMatchers(
-                                "/**login**",
-                                "/**logout**",
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers(
+                                "/login**",
+                                "/logout**",
                                 "/error",
                                 "/webjars/**",
                                 "/templates/**",
                                 "/css/**.css",
-                                "/actuator/**")
-                        .permitAll()
-                        .anyRequest().authenticated())
-                .oauth2Login(conf -> conf.defaultSuccessUrl("/persons")
-                        .loginPage("/login")
-                        .failureUrl("/login?error"))
-                .headers(headers -> headers
-                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
-                        .cacheControl(cache -> cache.disable())
-                        .httpStrictTransportSecurity(hsts -> hsts
-                                .includeSubDomains(true)
-                                .preload(true)
-                                .maxAgeInSeconds(31536000)
-                        )
+                                "/actuator/**"
+                        ).permitAll()
+                        .anyExchange().authenticated()
                 )
-                .csrf(csrf -> csrf.disable())
-                .requiresChannel(channel -> channel
-                        .anyRequest().requiresSecure()
+                .oauth2Login(Customizer.withDefaults())
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .requiresLogout(new PathPatternParserServerWebExchangeMatcher("/logout"))
                 )
-                .cors(withDefaults());
+                .headers(headers -> {
+                    headers.frameOptions().mode(XFrameOptionsServerHttpHeadersWriter.Mode.SAMEORIGIN);
+                    headers.cache().disable();
+                    headers.hsts(hsts -> hsts.includeSubdomains(true)
+                            .preload(true)
+                            .maxAge(Duration.ofDays(365)) // Equivalent to 31536000 seconds
+                    );
+                })
+                .csrf().disable()
+                .cors().configurationSource(corsConfigurationSource());
 
         return http.build();
     }
 
+
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("https://localhost:8443"));
-        configuration.setAllowedMethods(Arrays.asList("GET","POST"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 
     @Bean
-    public AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository() {
-        return new HttpSessionOAuth2AuthorizationRequestRepository();
-    }
-
-    @Bean
-    public OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient() {
-        DefaultAuthorizationCodeTokenResponseClient accessTokenResponseClient = new DefaultAuthorizationCodeTokenResponseClient();
-        return accessTokenResponseClient;
-    }
-    @Bean
-    public ClientRegistrationRepository clientRegistrationRepository() {
-
+    public ReactiveClientRegistrationRepository clientRegistrationRepository(OAuth2ClientProperties oAuth2ClientProperties) {
         List<ClientRegistration> registrations = oAuth2ClientProperties.getRegistration().keySet().stream()
-                .map(c -> getRegistration(c))
-                .filter(registration -> registration != null)
+                .map(client -> getRegistration(client, oAuth2ClientProperties))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        return new InMemoryClientRegistrationRepository(registrations);
+        return new InMemoryReactiveClientRegistrationRepository(registrations);
     }
 
     @Bean
-    public OAuth2AuthorizedClientRepository authorizedClientRepository(
-            OAuth2AuthorizedClientService authorizedClientService) {
-        return new AuthenticatedPrincipalOAuth2AuthorizedClientRepository(authorizedClientService);
+    public ServerOAuth2AuthorizationRequestResolver authorizationRequestResolver(
+            ReactiveClientRegistrationRepository clientRegistrationRepository) {
+        return new DefaultServerOAuth2AuthorizationRequestResolver(clientRegistrationRepository);
     }
 
-    @Bean
-    public OAuth2AuthorizedClientService authorizedClientService(ClientRegistrationRepository clientRegistrationRepository) {
-        return new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
-    }
-
-    private ClientRegistration getRegistration(String client) {
+    private ClientRegistration getRegistration(String client, OAuth2ClientProperties oAuth2ClientProperties) {
         OAuth2ClientProperties.Registration registration = oAuth2ClientProperties.getRegistration().get(client);
         String clientId = registration.getClientId();
         if (clientId == null) {
@@ -166,7 +130,7 @@ public class SecurityConfig {
                     .scope("public_profile")
                     .build();
             default -> {
-                OAuth2ClientProperties.Provider provider = oAuth2ClientProperties.getProvider().get(client);
+                OAuth2ClientProperties.Provider provider = this.oAuth2ClientProperties.getProvider().get(client);
                 yield ClientRegistration.withRegistrationId(client)
                         .clientId(clientId)
                         .clientSecret(clientSecret)
@@ -184,39 +148,6 @@ public class SecurityConfig {
             }
         };
     }
-
-    @Bean
-    public GrantedAuthoritiesMapper userAuthoritiesMapper() {
-        return (authorities) -> {
-            Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
-
-            authorities.forEach(authority -> {
-                if (OidcUserAuthority.class.isInstance(authority)) {
-                    OidcUserAuthority oidcUserAuthority = (OidcUserAuthority)authority;
-
-                    OidcIdToken idToken = oidcUserAuthority.getIdToken();
-                    OidcUserInfo userInfo = oidcUserAuthority.getUserInfo();
-                    log.info("oidc user info " + userInfo);
-
-                    // Map the claims found in idToken and/or userInfo
-                    // to one or more GrantedAuthority's and add it to mappedAuthorities
-
-                } else if (OAuth2UserAuthority.class.isInstance(authority)) {
-                    OAuth2UserAuthority oauth2UserAuthority = (OAuth2UserAuthority)authority;
-
-                    Map<String, Object> userAttributes = oauth2UserAuthority.getAttributes();
-                    log.info("auth2 user attributes " + userAttributes);
-
-                    // Map the attributes found in userAttributes
-                    // to one or more GrantedAuthority's and add it to mappedAuthorities
-
-                }
-            });
-
-            return mappedAuthorities;
-        };
-    }
-
 
 }
 

@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@NotThreadSafe
 @Import({SecurityConfig.class, TestClientConfig.class})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 public class SecurityConfigOIDCE2ETest {

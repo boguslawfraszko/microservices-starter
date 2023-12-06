@@ -10,6 +10,8 @@ server:
   port: 8443
 
 spring:
+  main:
+    web-application-type: reactive
   security:
     oauth2:
       client:

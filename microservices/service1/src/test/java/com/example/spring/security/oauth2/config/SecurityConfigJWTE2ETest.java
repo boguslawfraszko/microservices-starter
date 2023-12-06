@@ -6,7 +6,6 @@ import io.restassured.RestAssured;
 import io.restassured.module.mockmvc.RestAssuredMockMvc;
 import io.restassured.parsing.Parser;
 import lombok.SneakyThrows;
-import net.jcip.annotations.NotThreadSafe;
 import org.apache.http.client.utils.URIBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -33,7 +32,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 
 
-@NotThreadSafe
+
 @Import({SecurityConfig.class, TestClientConfig.class})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 public class SecurityConfigJWTE2ETest {
