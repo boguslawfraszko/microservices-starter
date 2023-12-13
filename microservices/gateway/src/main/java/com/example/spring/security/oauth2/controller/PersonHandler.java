@@ -1,17 +1,12 @@
 package com.example.spring.security.oauth2.controller;
 
 import com.example.spring.security.oauth2.model.Person;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Controller
-@RequestMapping("/persons")
-public class PersonController {
+public class PersonHandler {
     private static List<Person> persons = new ArrayList();
     static {
         Person p1 = new Person("Jack", "Smith");
@@ -21,9 +16,8 @@ public class PersonController {
         persons.add(p2);
         persons.add(p3);
     }
-    @GetMapping
-    public String getAllPersons(Model model) {
-        model.addAttribute("persons", persons);
-        return "persons-view";
+
+    public Mono<List<Person>> getAllPersons() {
+        return Mono.just(persons);
     }
 }

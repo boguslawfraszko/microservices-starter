@@ -15,12 +15,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {PersonController.class}, excludeAutoConfiguration = {OAuth2ClientAutoConfiguration.class})
+@WebMvcTest(controllers = {PersonHandler.class}, excludeAutoConfiguration = {OAuth2ClientAutoConfiguration.class})
 @ExtendWith(SpringExtension.class)
 public class PersonControllerTest {
 
     @Autowired
-    private PersonController controller;
+    private PersonHandler controller;
 
     private MockMvc mockMvc;
 
